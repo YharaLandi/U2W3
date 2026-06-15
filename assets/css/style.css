@@ -1,0 +1,241 @@
+/* Il mio rettilario — tema snake */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  color: #111;
+  background: #f5f2ee;
+}
+
+/* HEADER */
+header {
+  background: #2c4a2e;
+  color: #e8d5a3;
+  padding: 30px 20px;
+}
+
+.headerInner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+
+.sottotitolo {
+  font-size: 0.9rem;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* MAIN */
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  min-height: calc(100vh - 200px);
+}
+
+/* SEZIONI */
+.form-section,
+.lista-section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-section h2,
+.lista-section h2 {
+  font-size: 1rem;
+  color: #2c4a2e;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #2c4a2e;
+}
+
+#contatore {
+  background: #2c4a2e;
+  color: #e8d5a3;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+/* FORM */
+.campo {
+  margin-bottom: 0.6rem;
+}
+
+.campo input,
+.campo select {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fafafa;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: none;
+  border-color: #2c4a2e;
+}
+
+.btnPrimary {
+  background: #2c4a2e;
+  color: #e8d5a3;
+  padding: 0.5rem 1.4rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 0.4rem;
+}
+
+.btnPrimary:hover {
+  background: #1e3520;
+}
+
+/* LISTA */
+#lista-rettili {
+  list-style: none;
+}
+
+.rettile-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  background: #fdf9f5;
+  border: 1px solid #ddd;
+  border-left: 4px solid #2c4a2e;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 0.15s, border-left-color 0.15s;
+}
+
+.rettile-item:hover {
+  border-left-color: #e8d5a3;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.rettile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.rettile-info .nome {
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.rettile-info .specie-anno {
+  font-size: 0.82rem;
+  color: #666;
+  margin-top: 2px;
+}
+
+/* badge colorati per stato */
+.badge-stato {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.badge-acquistato {
+  background: #2c4a2e;
+  color: #e8d5a3;
+}
+
+.badge-desiderato {
+  background: #7a5c2e;
+  color: #f5e6c8;
+}
+
+.badge-incova {
+  background: #8b3a3a;
+  color: #fdecea;
+}
+
+.info-cova {
+  display: block;
+  font-size: 0.75rem;
+  color: #8b3a3a;
+  margin-top: 3px;
+}
+
+/* azioni */
+.rettile-azioni {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.rettile-azioni button {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  background: #f0ebe4;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.rettile-azioni button:hover {
+  background: #e0d8ce;
+}
+
+.rettile-azioni .elimina {
+  color: #c0392b;
+  border-color: #e8b4b4;
+}
+
+.rettile-azioni .elimina:hover {
+  background: #fdecea;
+}
+
+/* FOOTER */
+footer {
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #ddd;
+  background: #2c4a2e;
+  color: #e8d5a3;
+}
+
+.badge-inteca {
+  background: #4a7c59;
+  color: #fff;
+}
+
+.badge-noninteca {
+  background: #e0d8ce;
+  color: #666;
+}

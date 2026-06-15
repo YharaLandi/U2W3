@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Il mio rettilario</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <header>
+    <div class="headerInner">
+      <h1>🐍 Il mio rettilario</h1>
+      <p class="sottotitolo">Aggiungi i tuoi rettili o quelli che desideri.</p>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="form-section">
+      <h2>Aggiungi un rettile</h2>
+      <form id="aggiungi-rettile" class="form">
+
+        <div class="campo">
+          <input type="text" id="nome" placeholder="Nome">
+        </div>
+
+        <div class="campo">
+          <input type="text" id="specie" placeholder="Specie / Morph">
+        </div>
+
+        <div class="campo">
+          <input type="number" id="anno" placeholder="Anno acquisizione" min="2000">
+        </div>
+
+        <div class="campo">
+          <select id="stato">
+            <option value="acquistato">Acquistato</option>
+            <option value="desiderato">Desiderato</option>
+            <option value="in cova">In cova</option>
+          </select>
+        </div>
+
+        <p id="errore-anno" class="errore"></p>
+
+        <div class="campo campo-condizionale" id="campo-datacova" hidden>
+          <input type="date" id="dataInizio" placeholder="Data inizio cova">
+        </div>
+
+        <button type="submit" class="btnPrimary">+ Aggiungi</button>
+      </form>
+    </section>
+
+    <section class="lista-section">
+      <h2>I tuoi rettili &nbsp;<span id="contatore">0</span></h2>
+      <ul id="lista-rettili"></ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Il mio rettilario — Yhara Landi &copy; 2026</p>
+  </footer>
+
+  <script src="assets/script/script.js"></script>
+</body>
+</html>
