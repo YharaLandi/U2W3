@@ -30,7 +30,7 @@
         </div>
 
         <div class="campo">
-          <input type="number" id="anno" placeholder="Anno acquisizione" min="2000">
+          <input type="number" id="anno" placeholder="Anno acquisizione / nascita" min="2000">
         </div>
 
         <div class="campo">
@@ -52,7 +52,29 @@
     </section>
 
     <section class="lista-section">
-      <h2>I tuoi rettili &nbsp;<span id="contatore">0</span></h2>
+      <div class="lista-header">
+        <h2>I tuoi rettili &nbsp;<span id="contatore">0</span></h2>
+        <button id="svuota-tutto" class="btn-svuota">Svuota tutto</button>
+      </div>
+      <p class="info-storage">I rettili sono salvati nel browser e sopravvivono al refresh.</p>
+
+      <div class="controlli">
+        <div class="controlli-row">
+          <button class="btn-filtro attivo" data-filtro="tutti">Tutti</button>
+          <button class="btn-filtro" data-filtro="acquistato">Acquistato</button>
+          <button class="btn-filtro" data-filtro="desiderato">Desiderato</button>
+          <button class="btn-filtro" data-filtro="in cova">In cova</button>
+        </div>
+        <div class="controlli-row">
+          <span class="label-controllo">Ordina:</span>
+          <select id="selectOrdine">
+            <option value="nome-az">Nome A-Z</option>
+            <option value="nome-za">Nome Z-A</option>
+            <option value="anno">Anno</option>
+          </select>
+        </div>
+      </div>
+
       <ul id="lista-rettili"></ul>
     </section>
 

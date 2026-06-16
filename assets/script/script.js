@@ -1,5 +1,7 @@
-// Il mio rettilario — Settimana VII Giorno I
-// uso le classi per rappresentare i rettili
+// Il mio rettilario — Settimana VII Giorno II
+// aggiungo la persistenza: i rettili sopravvivono al refresh grazie a localStorage
+
+
 // === Classi ===
 
 // classe base: ogni rettile ha un id univoco auto-incrementale grazie al campo statico
@@ -26,7 +28,6 @@ class Rettile {
   }
 
   // metodo statico: crea un Rettile da una stringa "nome|specie|anno|stato"
- // utile per importare dati velocemente, es. Rettile.daStringa("Purptiell|Corn Snake|2021")
   static daStringa(s) {
     const [nome, specie, anno, stato] = s.split('|');
     return new Rettile(nome, specie, parseInt(anno), stato || 'acquistato');
@@ -42,18 +43,55 @@ class RettileInCova extends Rettile {
 
   // override: fornisce una descrizione più ricca rispetto alla classe base
   descrizioneStato() {
-    return `In cova dal ${this.dataInizio}`;
+    return `in cova dal ${this.dataInizio}`;
   }
 }
 
-// test del metodo statico in console
-console.log(Rettile.daStringa("Purptiell|Corn Snake|2021|acquistato"));
+
+// LOCALSTORAGE(aggiunto il 16/06/2026)
+
+// chiave unica con cui salvo i dati nel browser
+const STORAGE_KEY = 'rettilario';
+
+// salva l'array rettili nel localStorage come stringa JSON
+function salvaRettili() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rettili));
+}
+
+// carica i dati dal localStorage e ri-istanzia le classi giuste
+// GOTCHA: JSON.parse restituisce oggetti puri, non istanze —
+// quindi i metodi come descrizioneStato() non esisterebbero senza questa ricostruzione
+function caricaRettili() {
+  const dati = localStorage.getItem(STORAGE_KEY);
+  if (!dati) return []; // prima visita: niente salvato, parto da zero
+
+  return JSON.parse(dati).map(d => {
+    // ricostruisco l'istanza giusta in base allo stato salvato
+    let r;
+    if (d.stato === 'in cova') {
+      r = new RettileInCova(d.nome, d.specie, d.anno, d.dataInizio);
+    } else {
+      r = new Rettile(d.nome, d.specie, d.anno, d.stato);
+    }
+    // ripristino id e inTeca esattamente come erano
+    r.id = d.id;
+    r.inTeca = d.inTeca;
+    return r;
+  });
+}
 
 
 // === Stato ===
 
-// array che contiene tutte le istanze create tramite il form
-const rettili = [];
+// carico subito i rettili salvati invece di partire da array vuoto
+// uso let perché "Svuota tutto" dovrà riassegnare l'array
+let rettili = caricaRettili();
+
+// sincronizzo il contatore statico con l'id più alto già salvato
+// così i nuovi rettili non avranno id in conflitto con quelli esistenti
+if (rettili.length > 0) {
+  Rettile.contatore = Math.max(...rettili.map(r => r.id));
+}
 
 
 // === Setup input anno ===
@@ -107,7 +145,7 @@ function creaCardRettile(r) {
   // badge teca: mostra lo stato di questa proprietà booleana indipendente
   const badgeTeca = document.createElement('span');
   badgeTeca.className = `badge-stato ${r.inTeca ? 'badge-inteca' : 'badge-noninteca'}`;
-  badgeTeca.textContent = r.inTeca ? '🏠 In teca' : '⏳ Non in teca';
+  badgeTeca.textContent = r.inTeca ? '🏠 in teca' : '⏳ non in teca';
   azioni.appendChild(badgeTeca);
 
   // bottone "segna in teca" visibile solo se non ancora segnato
@@ -137,10 +175,40 @@ function renderRettili() {
 
   lista.replaceChildren(); // più pulito di innerHTML = ''
 
-  rettili.forEach(r => lista.appendChild(creaCardRettile(r)));
+  // uso getListaFiltrata() così il render rispetta sempre filtro e ordine attivi
+  getListaFiltrata().forEach(r => lista.appendChild(creaCardRettile(r)));
 
   contatore.textContent = rettili.length;
 }
+
+// FILTRO E ORDINAMENTO (aggiunto il 16/06/2026)
+
+// stato corrente di filtro e ordine — parto con "tutti" e "nome-az"
+let filtroAttivo = 'tutti';
+let ordineAttivo = 'nome-az';
+
+// applica filtro e ordinamento all'array e restituisce la versione filtrata
+// non modifica l'array originale, lavora su una copia
+function getListaFiltrata() {
+  let risultato = [...rettili]; // copia per non alterare l'originale
+
+  // filtro per stato
+  if (filtroAttivo !== 'tutti') {
+    risultato = risultato.filter(r => r.stato === filtroAttivo);
+  }
+
+  // ordinamento
+  risultato.sort((a, b) => {
+    if (ordineAttivo === 'nome-az') return a.nome.localeCompare(b.nome);
+    if (ordineAttivo === 'nome-za') return b.nome.localeCompare(a.nome);
+    if (ordineAttivo === 'anno')    return (a.anno || 0) - (b.anno || 0);
+  });
+
+  return risultato;
+}
+
+// render iniziale: mostro subito i rettili caricati dal localStorage
+renderRettili();
 
 
 // === Eventi ===
@@ -167,7 +235,7 @@ document.getElementById('aggiungi-rettile').addEventListener('submit', (e) => {
   const stato      = selectStato.value;
   const dataInizio = document.getElementById('dataInizio').value;
 
-  // creo RettileInCova se il formato è "in cova", altrimenti un Rettile base
+  // creo RettileInCova se lo stato è "in cova", altrimenti un Rettile base
   let nuovo;
   if (stato === 'in cova') {
     nuovo = new RettileInCova(nome, specie, anno, dataInizio);
@@ -176,6 +244,7 @@ document.getElementById('aggiungi-rettile').addEventListener('submit', (e) => {
   }
 
   rettili.push(nuovo); // aggiungo all'array di stato
+  salvaRettili();      // persisto subito nel localStorage
   renderRettili();     // ridisegno tutta la lista
 
   e.target.reset(); // pulisco il form
@@ -196,6 +265,7 @@ document.getElementById('lista-rettili').addEventListener('click', (e) => {
     // chiamo il metodo della classe che imposta inTeca = true
     const rettile = rettili.find(r => r.id === id);
     rettile.segnaInTeca();
+    salvaRettili(); // salvo dopo ogni modifica
     renderRettili();
   }
 
@@ -203,6 +273,33 @@ document.getElementById('lista-rettili').addEventListener('click', (e) => {
     // rimuovo dall'array con splice e ridisegno
     const idx = rettili.findIndex(r => r.id === id);
     rettili.splice(idx, 1);
+    salvaRettili(); // salvo dopo ogni modifica
     renderRettili();
   }
+});
+
+// SVUOTA TUTTO: cancella localStorage e azzera l'array (aggiunto il 16/06/2026)
+// uso let sull'array per poterlo riassegnare qui
+document.getElementById('svuota-tutto').addEventListener('click', () => {
+  rettili = []; // riassegno l'array vuoto
+  Rettile.contatore = 0; // resetto anche il contatore degli id
+  localStorage.removeItem(STORAGE_KEY); // cancello dal browser
+  renderRettili();
+});
+
+// listener bottoni filtro
+document.querySelectorAll('.btn-filtro').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // rimuovo attivo da tutti e lo metto su quello cliccato
+    document.querySelectorAll('.btn-filtro').forEach(b => b.classList.remove('attivo'));
+    btn.classList.add('attivo');
+    filtroAttivo = btn.dataset.filtro;
+    renderRettili();
+  });
+});
+
+// listener select ordinamento
+document.getElementById('selectOrdine').addEventListener('change', (e) => {
+  ordineAttivo = e.target.value;
+  renderRettili();
 });

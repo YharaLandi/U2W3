@@ -41,7 +41,7 @@ header h1 {
   max-width: 720px;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 190px);
 }
 
 /* SEZIONI */
@@ -238,4 +238,94 @@ footer {
 .badge-noninteca {
   background: #e0d8ce;
   color: #666;
+}
+
+/* header lista con bottone svuota */
+.lista-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #2c4a2e;
+}
+
+/* sovrascrive il border-bottom dell'h2 dentro lista-header */
+.lista-header h2 {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.btn-svuota {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid #c0392b;
+  border-radius: 4px;
+  color: #c0392b;
+  font-size: 0.8rem;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-svuota:hover {
+  background: #fdecea;
+}
+
+.info-storage {
+  font-size: 0.78rem;
+  color: #888;
+  font-style: italic;
+  margin-bottom: 0.9rem;
+}
+
+/* controlli filtro e ordinamento */
+.controlli {
+  margin-bottom: 1rem;
+}
+
+.controlli-row {
+  margin-bottom: 0.5rem;
+}
+
+.controlli-row select {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fafafa;
+}
+
+.controlli-row select:focus {
+  outline: none;
+  border-color: #2c4a2e;
+}
+
+.label-controllo {
+  font-size: 0.85rem;
+  color: #555;
+  margin-right: 0.3rem;
+}
+
+.btn-filtro {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: #f0ebe4;
+  margin-right: 0.3rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-filtro:hover {
+  background: #e0d8ce;
+}
+
+.btn-filtro.attivo {
+  background: #2c4a2e;
+  color: #e8d5a3;
+  border-color: #2c4a2e;
 }
