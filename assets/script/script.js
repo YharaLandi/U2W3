@@ -1,81 +1,51 @@
-// Il mio rettilario — Settimana VII Giorno II
-// aggiungo la persistenza: i rettili sopravvivono al refresh grazie a localStorage
+// Il mio rettilario — Settimana VII Giorno III (17/06/2026)
+// aggiungo la ricerca con fetch su iNaturalist API (solo Serpentes, taxon_id=85553)
 
 
 // === Classi ===
 
-// classe base: ogni rettile ha un id univoco auto-incrementale grazie al campo statico
 class Rettile {
-  static contatore = 0; // condiviso tra tutte le istanze
+  static contatore = 0;
 
-  constructor(nome, specie, anno, stato) {
-    this.id = ++Rettile.contatore; // id cresce ad ogni new Rettile
+  constructor(nome, specie, anno, extinct = false) {
+    this.id = ++Rettile.contatore;
     this.nome = nome;
     this.specie = specie;
     this.anno = anno;
-    this.stato = stato; // "acquistato" | "desiderato" | "in cova"
-    this.inTeca = false; // validazione separata dallo stato, parte sempre a false
+    this.extinct = extinct; // booleano dall'API: true se la specie è estinta (17/06/2026)
+    this.studiato = false;  // booleano separato: segna se hai studiato questo serpente (17/06/2026)
   }
 
-  // restituisce lo stato leggibile — le sottoclassi possono sovrascriverlo
-  descrizioneStato() {
-    return this.stato;
+  // segna il rettile come studiato — chiamato dal bottone "Segna come studiato" (17/06/2026)
+  segnaStudioato() {
+    this.studiato = true;
   }
 
-  // segna il rettile come fisicamente in teca, senza toccare lo stato
-  segnaInTeca() {
-    this.inTeca = true;
-  }
-
-  // metodo statico: crea un Rettile da una stringa "nome|specie|anno|stato"
   static daStringa(s) {
-    const [nome, specie, anno, stato] = s.split('|');
-    return new Rettile(nome, specie, parseInt(anno), stato || 'acquistato');
-  }
-}
-
-// sottoclasse per i rettili in cova: estende Rettile aggiungendo la data di inizio
-class RettileInCova extends Rettile {
-  constructor(nome, specie, anno, dataInizio) {
-    super(nome, specie, anno, 'in cova'); // chiamo il costruttore del genitore
-    this.dataInizio = dataInizio; // proprietà aggiuntiva specifica di questa sottoclasse
-  }
-
-  // override: fornisce una descrizione più ricca rispetto alla classe base
-  descrizioneStato() {
-    return `in cova dal ${this.dataInizio}`;
+    const [nome, specie, anno] = s.split('|');
+    return new Rettile(nome, specie, parseInt(anno));
   }
 }
 
 
-// LOCALSTORAGE(aggiunto il 16/06/2026)
+// === localStorage === (aggiunto il 16/06/2026)
 
-// chiave unica con cui salvo i dati nel browser
 const STORAGE_KEY = 'rettilario';
 
-// salva l'array rettili nel localStorage come stringa JSON
 function salvaRettili() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rettili));
 }
 
-// carica i dati dal localStorage e ri-istanzia le classi giuste
 // GOTCHA: JSON.parse restituisce oggetti puri, non istanze —
-// quindi i metodi come descrizioneStato() non esisterebbero senza questa ricostruzione
+// ri-istanzio le classi giuste per ripristinare i metodi
 function caricaRettili() {
   const dati = localStorage.getItem(STORAGE_KEY);
-  if (!dati) return []; // prima visita: niente salvato, parto da zero
+  if (!dati) return [];
 
   return JSON.parse(dati).map(d => {
-    // ricostruisco l'istanza giusta in base allo stato salvato
-    let r;
-    if (d.stato === 'in cova') {
-      r = new RettileInCova(d.nome, d.specie, d.anno, d.dataInizio);
-    } else {
-      r = new Rettile(d.nome, d.specie, d.anno, d.stato);
-    }
-    // ripristino id e inTeca esattamente come erano
+    const r = new Rettile(d.nome, d.specie, d.anno, d.extinct);
     r.id = d.id;
-    r.inTeca = d.inTeca;
+    r.studiato = d.studiato;
     return r;
   });
 }
@@ -83,40 +53,172 @@ function caricaRettili() {
 
 // === Stato ===
 
-// carico subito i rettili salvati invece di partire da array vuoto
-// uso let perché "Svuota tutto" dovrà riassegnare l'array
+// uso let perché "Svuota tutto" riassegna l'array
 let rettili = caricaRettili();
 
-// sincronizzo il contatore statico con l'id più alto già salvato
-// così i nuovi rettili non avranno id in conflitto con quelli esistenti
+// sincronizzo il contatore con l'id più alto già salvato
 if (rettili.length > 0) {
   Rettile.contatore = Math.max(...rettili.map(r => r.id));
 }
 
 
-// === Setup input anno ===
+// === Filtro e ordinamento === (aggiunto il 16/06/2026)
+// il filtro per estinzione è stato aggiunto il 17/06/2026
 
-// imposto dinamicamente l'anno corrente come massimo accettato
-// così non devo aggiornare il codice ogni anno
-const annoCorrente = new Date().getFullYear();
-document.getElementById('anno').setAttribute('max', annoCorrente);
+let filtroAttivo = 'tutti';
+let ordineAttivo = 'nome-az';
 
+// lavora su una copia dell'array — non modifica mai l'originale
+function getListaFiltrata() {
+  let risultato = [...rettili];
 
-// === Render ===
+  // filtro per stato estinzione — i dati vengono dall'API iNaturalist (17/06/2026)
+  if (filtroAttivo === 'estinti')    risultato = risultato.filter(r => r.extinct);
+  if (filtroAttivo === 'nonestinti') risultato = risultato.filter(r => !r.extinct);
 
-// restituisce la classe CSS giusta per il badge in base allo stato
-function badgeClass(stato) {
-  if (stato === 'acquistato') return 'badge-acquistato';
-  if (stato === 'desiderato') return 'badge-desiderato';
-  return 'badge-incova';
+  risultato.sort((a, b) => {
+    if (ordineAttivo === 'nome-az') return a.nome.localeCompare(b.nome);
+    if (ordineAttivo === 'nome-za') return b.nome.localeCompare(a.nome);
+    if (ordineAttivo === 'anno')    return (a.anno || 0) - (b.anno || 0);
+  });
+
+  return risultato;
 }
 
-// costruisce il <li> di un rettile con createElement invece di innerHTML
-// così ho controllo preciso su ogni elemento e non rischio injection
+// aggiorna la classe attivo sui bottoni filtro
+function renderFiltri() {
+  document.querySelectorAll('.btn-filtro').forEach(btn => {
+    btn.classList.toggle('attivo', btn.dataset.filtro === filtroAttivo);
+  });
+}
+
+
+// === Helpers fetch === (aggiunto il 17/06/2026)
+// tre funzioni per gestire i 3 stati della ricerca: caricamento, errore, risultati
+
+function mostraSpinner() {
+  document.getElementById('spinner').removeAttribute('hidden');
+  document.getElementById('errore').setAttribute('hidden', '');
+}
+
+function nascondiSpinner() {
+  document.getElementById('spinner').setAttribute('hidden', '');
+}
+
+// scrive il messaggio nell'elemento #errore e lo rende visibile
+function mostraErrore(msg) {
+  const el = document.getElementById('errore');
+  el.textContent = msg;
+  el.removeAttribute('hidden');
+  nascondiSpinner();
+}
+
+
+// === Render risultati ricerca === (aggiunto il 17/06/2026)
+
+/**
+ * Renderizza i risultati della ricerca iNaturalist nella lista #risultati
+ * Costruisce ogni <li> con foto, nome comune, nome scientifico e bottone Aggiungi
+ * @param {Array} taxa - array di taxa restituiti dall'API
+ */
+function renderRisultati(taxa) {
+  const lista = document.getElementById('risultati');
+  lista.replaceChildren();
+
+  if (taxa.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'Nessun risultato.';
+    lista.appendChild(li);
+    return;
+  }
+
+  taxa.forEach(d => {
+    const nomeComune  = d.preferred_common_name || d.name;
+    const nomeScient  = d.name;
+    const foto        = d.default_photo ? d.default_photo.square_url : null;
+
+    // controllo se è già nel rettilario per disabilitare il bottone
+    const giàAggiunto = rettili.some(r => r.specie === nomeScient);
+
+    const li = document.createElement('li');
+    li.className = 'risultato-item';
+
+    if (foto) {
+      const img = document.createElement('img');
+      img.src = foto;
+      img.alt = nomeComune;
+      img.className = 'risultato-foto';
+      li.appendChild(img);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'risultato-info';
+
+    const titolo = document.createElement('span');
+    titolo.className = 'risultato-nome';
+    titolo.textContent = nomeComune;
+
+    const scient = document.createElement('span');
+    scient.className = 'risultato-scient';
+    scient.textContent = nomeScient;
+
+    info.appendChild(titolo);
+    info.appendChild(scient);
+
+
+    // salvo extinct nel dataset del bottone per recuperarlo al click
+    const btn = document.createElement('button');
+    btn.className = 'btn-aggiungi';
+    btn.dataset.nome    = nomeComune;
+    btn.dataset.specie  = nomeScient;
+    btn.dataset.extinct = d.extinct || false;
+
+    if (giàAggiunto) {
+      btn.textContent = '✓ Aggiunto';
+      btn.setAttribute('disabled', '');
+    } else {
+      btn.textContent = 'Aggiungi';
+      btn.dataset.azione = 'aggiungi';
+    }
+
+    li.appendChild(info);
+    li.appendChild(btn);
+    lista.appendChild(li);
+  });
+}
+
+
+// === Fetch iNaturalist === (aggiunto il 17/06/2026)
+
+/**
+ * Cerca serpenti su iNaturalist filtrando per Serpentes (taxon_id=85553)
+ * Gestisce i 3 stati: spinner → risultati o errore → nascondi spinner (finally)
+ * @param {string} query - testo cercato dall'utente
+ */
+function cerca(query) {
+  mostraSpinner();
+
+  // taxon_id=85553 = Serpentes, rank=species esclude generi e famiglie
+  const url = 'https://api.inaturalist.org/v1/taxa?q=' + encodeURIComponent(query) + '&taxon_id=85553&rank=species&limit=10&is_active=true';
+
+  fetch(url)
+    .then(response => {
+      // se la risposta non è ok lancio un errore che finisce nel catch
+      if (!response.ok) throw new Error('Errore HTTP ' + response.status);
+      return response.json();
+    })
+    .then(dati => renderRisultati(dati.results))
+    .catch(err => mostraErrore('Impossibile completare la ricerca: ' + err.message))
+    .finally(() => nascondiSpinner()); // si esegue sempre, anche in caso di errore
+}
+
+
+// === Render rettilario ===
+
 function creaCardRettile(r) {
   const li = document.createElement('li');
   li.className = 'rettile-item';
-  li.dataset.id = r.id; // salvo l'id nel DOM per recuperarlo nell'event delegation
+  li.dataset.id = r.id;
 
   // --- colonna sinistra: info ---
   const info = document.createElement('div');
@@ -126,34 +228,37 @@ function creaCardRettile(r) {
   nome.className = 'nome';
   nome.textContent = r.nome;
 
-  const specieAnno = document.createElement('span');
-  specieAnno.className = 'specie-anno';
-  specieAnno.textContent = r.anno ? `${r.specie} — ${r.anno}` : r.specie;
-
-  const badge = document.createElement('span');
-  badge.className = `badge-stato ${badgeClass(r.stato)}`;
-  badge.textContent = r.descrizioneStato(); // chiama il metodo della classe (o della sottoclasse)
+  const specieEl = document.createElement('span');
+  specieEl.className = 'specie-anno';
+  specieEl.textContent = r.specie;
 
   info.appendChild(nome);
-  info.appendChild(specieAnno);
-  info.appendChild(badge);
+  info.appendChild(specieEl);
 
-  // --- colonna destra: badge teca + bottoni ---
+  // badge estinto — visibile solo se il campo extinct è true (17/06/2026)
+  if (r.extinct) {
+    const extEl = document.createElement('span');
+    extEl.className = 'badge-stato badge-extinct';
+    extEl.textContent = '☠️ Estinto';
+    info.appendChild(extEl);
+  }
+
+  // --- colonna destra: badge studiato + bottoni ---
   const azioni = document.createElement('div');
   azioni.className = 'rettile-azioni';
 
-  // badge teca: mostra lo stato di questa proprietà booleana indipendente
-  const badgeTeca = document.createElement('span');
-  badgeTeca.className = `badge-stato ${r.inTeca ? 'badge-inteca' : 'badge-noninteca'}`;
-  badgeTeca.textContent = r.inTeca ? '🏠 in teca' : '⏳ non in teca';
-  azioni.appendChild(badgeTeca);
+  // badge studiato: mostra lo stato del booleano this.studiato (17/06/2026)
+  const badgeStudio = document.createElement('span');
+  badgeStudio.className = `badge-stato ${r.studiato ? 'badge-studiato' : 'badge-nonstudioato'}`;
+  badgeStudio.textContent = r.studiato ? '📚 Studiato' : '🔬 Da studiare';
+  azioni.appendChild(badgeStudio);
 
-  // bottone "segna in teca" visibile solo se non ancora segnato
-  if (!r.inTeca) {
-    const btnTeca = document.createElement('button');
-    btnTeca.dataset.azione = 'teca'; // usato dall'event delegation per capire cosa fare
-    btnTeca.textContent = '🐍 Segna in teca';
-    azioni.appendChild(btnTeca);
+  // bottone visibile solo finché non è studiato — sparisce dopo il click
+  if (!r.studiato) {
+    const btnStudio = document.createElement('button');
+    btnStudio.dataset.azione = 'studia';
+    btnStudio.textContent = 'Segna come studiato';
+    azioni.appendChild(btnStudio);
   }
 
   const btnRimuovi = document.createElement('button');
@@ -168,138 +273,109 @@ function creaCardRettile(r) {
   return li;
 }
 
-// svuota la lista e la ridisegna da zero partendo dall'array rettili
 function renderRettili() {
   const lista = document.getElementById('lista-rettili');
   const contatore = document.getElementById('contatore');
 
-  lista.replaceChildren(); // più pulito di innerHTML = ''
+  lista.replaceChildren();
 
-  // uso getListaFiltrata() così il render rispetta sempre filtro e ordine attivi
   getListaFiltrata().forEach(r => lista.appendChild(creaCardRettile(r)));
 
   contatore.textContent = rettili.length;
 }
 
-// FILTRO E ORDINAMENTO (aggiunto il 16/06/2026)
-
-// stato corrente di filtro e ordine — parto con "tutti" e "nome-az"
-let filtroAttivo = 'tutti';
-let ordineAttivo = 'nome-az';
-
-// applica filtro e ordinamento all'array e restituisce la versione filtrata
-// non modifica l'array originale, lavora su una copia
-function getListaFiltrata() {
-  let risultato = [...rettili]; // copia per non alterare l'originale
-
-  // filtro per stato
-  if (filtroAttivo !== 'tutti') {
-    risultato = risultato.filter(r => r.stato === filtroAttivo);
-  }
-
-  // ordinamento
-  risultato.sort((a, b) => {
-    if (ordineAttivo === 'nome-az') return a.nome.localeCompare(b.nome);
-    if (ordineAttivo === 'nome-za') return b.nome.localeCompare(a.nome);
-    if (ordineAttivo === 'anno')    return (a.anno || 0) - (b.anno || 0);
-  });
-
-  return risultato;
-}
-
-// render iniziale: mostro subito i rettili caricati dal localStorage
+// render iniziale dai dati in localStorage
+renderFiltri();
 renderRettili();
 
 
 // === Eventi ===
 
-const selectStato = document.getElementById('stato');
-const campoDataCova = document.getElementById('campo-datacova');
+// debounce: aspetto 400ms dopo l'ultima digitazione prima di fare il fetch (17/06/2026)
+// evito una richiesta per ogni tasto premuto
+let timeoutId;
+document.getElementById('cerca').addEventListener('input', (e) => {
+  const query = e.target.value.trim();
 
-// mostro o nascondo il campo data cova in base al valore della select
-selectStato.addEventListener('change', () => {
-  if (selectStato.value === 'in cova') {
-    campoDataCova.removeAttribute('hidden');
-  } else {
-    campoDataCova.setAttribute('hidden', '');
-  }
-});
-
-// al submit leggo i valori, creo l'istanza giusta e aggiorno la lista
-document.getElementById('aggiungi-rettile').addEventListener('submit', (e) => {
-  e.preventDefault(); // blocco il comportamento default del form (ricarica pagina)
-
-  const nome       = document.getElementById('nome').value.trim();
-  const specie     = document.getElementById('specie').value.trim();
-  const anno       = parseInt(document.getElementById('anno').value) || null;
-  const stato      = selectStato.value;
-  const dataInizio = document.getElementById('dataInizio').value;
-
-  // creo RettileInCova se lo stato è "in cova", altrimenti un Rettile base
-  let nuovo;
-  if (stato === 'in cova') {
-    nuovo = new RettileInCova(nome, specie, anno, dataInizio);
-  } else {
-    nuovo = new Rettile(nome, specie, anno, stato);
+  // sotto i 3 caratteri svuoto i risultati e non faccio fetch
+  if (query.length < 3) {
+    document.getElementById('risultati').replaceChildren();
+    return;
   }
 
-  rettili.push(nuovo); // aggiungo all'array di stato
-  salvaRettili();      // persisto subito nel localStorage
-  renderRettili();     // ridisegno tutta la lista
-
-  e.target.reset(); // pulisco il form
-  campoDataCova.setAttribute('hidden', ''); // nascondo di nuovo il campo data cova
+  clearTimeout(timeoutId);
+  timeoutId = setTimeout(() => cerca(query), 400); // 400ms di attesa
 });
 
-// gestisco tutti i click sulla lista con un solo listener sul contenitore (event delegation)
-// evito di attaccare listener su ogni singolo bottone
+// click delegato sui risultati — aggiungi al rettilario (17/06/2026)
+document.getElementById('risultati').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-azione="aggiungi"]');
+  if (!btn) return;
+
+  // creo il Rettile con i dati salvati nel dataset del bottone
+  const nuovo = new Rettile(
+    btn.dataset.nome,
+    btn.dataset.specie,
+    new Date().getFullYear(),
+    btn.dataset.extinct === 'true' // il dataset salva stringhe, converto in booleano
+  );
+
+  rettili.push(nuovo);
+  salvaRettili();
+  renderRettili();
+
+  // feedback immediato: disabilito il bottone e cambio testo
+  btn.textContent = '✓ Aggiunto';
+  btn.setAttribute('disabled', '');
+  btn.removeAttribute('data-azione');
+});
+
+// click delegato sul rettilario personale
 document.getElementById('lista-rettili').addEventListener('click', (e) => {
-  const bottone = e.target.closest('[data-azione]'); // risalgo al bottone con data-azione
-  if (!bottone) return; // click su area non interattiva, esco
+  const bottone = e.target.closest('[data-azione]');
+  if (!bottone) return;
 
   const card   = bottone.closest('li');
-  const id     = parseInt(card.dataset.id); // recupero l'id salvato nel DOM
+  const id     = parseInt(card.dataset.id);
   const azione = bottone.dataset.azione;
 
-  if (azione === 'teca') {
-    // chiamo il metodo della classe che imposta inTeca = true
+  if (azione === 'studia') {
+    // chiamo il metodo della classe che imposta studiato = true (17/06/2026)
     const rettile = rettili.find(r => r.id === id);
-    rettile.segnaInTeca();
-    salvaRettili(); // salvo dopo ogni modifica
+    rettile.segnaStudioato();
+    salvaRettili();
     renderRettili();
   }
 
   if (azione === 'rimuovi') {
-    // rimuovo dall'array con splice e ridisegno
     const idx = rettili.findIndex(r => r.id === id);
     rettili.splice(idx, 1);
-    salvaRettili(); // salvo dopo ogni modifica
+    salvaRettili();
     renderRettili();
   }
 });
 
-// SVUOTA TUTTO: cancella localStorage e azzera l'array (aggiunto il 16/06/2026)
-// uso let sull'array per poterlo riassegnare qui
+// svuota tutto (aggiunto il 16/06/2026)
 document.getElementById('svuota-tutto').addEventListener('click', () => {
-  rettili = []; // riassegno l'array vuoto
-  Rettile.contatore = 0; // resetto anche il contatore degli id
-  localStorage.removeItem(STORAGE_KEY); // cancello dal browser
+  rettili = [];
+  Rettile.contatore = 0;
+  localStorage.removeItem(STORAGE_KEY);
+  filtroAttivo = 'tutti';
+  renderFiltri();
   renderRettili();
 });
 
-// listener bottoni filtro
-document.querySelectorAll('.btn-filtro').forEach(btn => {
-  btn.addEventListener('click', () => {
-    // rimuovo attivo da tutti e lo metto su quello cliccato
-    document.querySelectorAll('.btn-filtro').forEach(b => b.classList.remove('attivo'));
-    btn.classList.add('attivo');
-    filtroAttivo = btn.dataset.filtro;
-    renderRettili();
-  });
-});
-
-// listener select ordinamento
+// select ordinamento
 document.getElementById('selectOrdine').addEventListener('change', (e) => {
   ordineAttivo = e.target.value;
   renderRettili();
+});
+
+// listener bottoni filtro (17/06/2026)
+document.querySelectorAll('.btn-filtro').forEach(btn => {
+  btn.addEventListener('click', () => {
+    filtroAttivo = btn.dataset.filtro;
+    renderFiltri();
+    renderRettili();
+  });
 });

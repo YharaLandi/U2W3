@@ -11,59 +11,37 @@
   <header>
     <div class="headerInner">
       <h1>🐍 Il mio rettilario</h1>
-      <p class="sottotitolo">Aggiungi i tuoi rettili o quelli che desideri.</p>
+      <p class="sottotitolo">Cerca serpenti nel catalogo e aggiungili alla tua collezione.</p>
     </div>
   </header>
 
   <main class="container">
 
-    <section class="form-section">
-      <h2>Aggiungi un rettile</h2>
-      <form id="aggiungi-rettile" class="form">
-
-        <div class="campo">
-          <input type="text" id="nome" placeholder="Nome">
-        </div>
-
-        <div class="campo">
-          <input type="text" id="specie" placeholder="Specie / Morph">
-        </div>
-
-        <div class="campo">
-          <input type="number" id="anno" placeholder="Anno acquisizione / nascita" min="2000">
-        </div>
-
-        <div class="campo">
-          <select id="stato">
-            <option value="acquistato">Acquistato</option>
-            <option value="desiderato">Desiderato</option>
-            <option value="in cova">In cova</option>
-          </select>
-        </div>
-
-        <p id="errore-anno" class="errore"></p>
-
-        <div class="campo campo-condizionale" id="campo-datacova" hidden>
-          <input type="date" id="dataInizio" placeholder="Data inizio cova">
-        </div>
-
-        <button type="submit" class="btnPrimary">+ Aggiungi</button>
-      </form>
+    <!-- sezione cerca -->
+    <section class="cerca-section">
+      <h2>Cerca nel catalogo</h2>
+      <div class="campo">
+        <label for="cerca">Cerca un serpente</label>
+        <input type="text" id="cerca" placeholder="es. pitone, cobra, boa...">
+      </div>
+      <div id="spinner" class="spinner" hidden>Caricamento in corso...</div>
+      <div id="errore" class="alert-danger" hidden></div>
+      <ul id="risultati" class="risultati"></ul>
     </section>
 
+    <!-- rettilario personale -->
     <section class="lista-section">
       <div class="lista-header">
-        <h2>I tuoi rettili &nbsp;<span id="contatore">0</span></h2>
+        <h2>Il mio rettilario &nbsp;<span id="contatore">0</span></h2>
         <button id="svuota-tutto" class="btn-svuota">Svuota tutto</button>
       </div>
       <p class="info-storage">I rettili sono salvati nel browser e sopravvivono al refresh.</p>
 
       <div class="controlli">
-        <div class="controlli-row">
+        <div class="controlli-row" id="filtri-famiglia">
           <button class="btn-filtro attivo" data-filtro="tutti">Tutti</button>
-          <button class="btn-filtro" data-filtro="acquistato">Acquistato</button>
-          <button class="btn-filtro" data-filtro="desiderato">Desiderato</button>
-          <button class="btn-filtro" data-filtro="in cova">In cova</button>
+          <button class="btn-filtro" data-filtro="nonestinti">Non estinti</button>
+          <button class="btn-filtro" data-filtro="estinti">Estinti</button>
         </div>
         <div class="controlli-row">
           <span class="label-controllo">Ordina:</span>
