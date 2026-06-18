@@ -195,21 +195,23 @@ function renderRisultati(taxa) {
  * Gestisce i 3 stati: spinner → risultati o errore → nascondi spinner (finally)
  * @param {string} query - testo cercato dall'utente
  */
-function cerca(query) {
+// convertita da .then a async/await il 18/06/2026 — stessa logica, sintassi più leggibile
+async function cerca(query) {
   mostraSpinner();
 
   // taxon_id=85553 = Serpentes, rank=species esclude generi e famiglie
   const url = 'https://api.inaturalist.org/v1/taxa?q=' + encodeURIComponent(query) + '&taxon_id=85553&rank=species&limit=10&is_active=true';
 
-  fetch(url)
-    .then(response => {
-      // se la risposta non è ok lancio un errore che finisce nel catch
-      if (!response.ok) throw new Error('Errore HTTP ' + response.status);
-      return response.json();
-    })
-    .then(dati => renderRisultati(dati.results))
-    .catch(err => mostraErrore('Impossibile completare la ricerca: ' + err.message))
-    .finally(() => nascondiSpinner()); // si esegue sempre, anche in caso di errore
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Errore HTTP ' + response.status);
+    const dati = await response.json();
+    renderRisultati(dati.results);
+  } catch (err) {
+    mostraErrore('Impossibile completare la ricerca: ' + err.message);
+  } finally {
+    nascondiSpinner(); // si esegue sempre, anche in caso di errore
+  }
 }
 
 
@@ -284,9 +286,7 @@ function renderRettili() {
   contatore.textContent = rettili.length;
 }
 
-// render iniziale dai dati in localStorage
-renderFiltri();
-renderRettili();
+// render iniziale gestito da avvio() in fondo allo script (18/06/2026)
 
 
 // === Eventi ===
@@ -379,3 +379,206 @@ document.querySelectorAll('.btn-filtro').forEach(btn => {
     renderRettili();
   });
 });
+
+
+// === Autenticazione === (aggiunto il 18/06/2026)
+// uso dummyjson.com come API di test per login, token e profilo utente
+
+// legge il token JWT salvato in localStorage — null se non loggato
+function getToken() {
+  return localStorage.getItem('auth.token');
+}
+
+// legge e parsa l'oggetto utente salvato in localStorage — null se non presente
+function getUtente() {
+  const u = localStorage.getItem('auth.user');
+  return u ? JSON.parse(u) : null;
+}
+
+// rimuove token e utente dal localStorage — equivale al logout
+function logout() {
+  localStorage.removeItem('auth.token');
+  localStorage.removeItem('auth.user');
+}
+
+/**
+ * Fa il login su dummyjson.com con username e password
+ * Salva il token JWT e i dati utente in localStorage
+ * @param {string} username
+ * @param {string} password
+ * @returns {Object} i dati utente ricevuti dall'API
+ */
+async function login(username, password) {
+  // uso async/await invece di .then — più leggibile per operazioni sequenziali (18/06/2026)
+  const r = await fetch('https://dummyjson.com/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!r.ok) throw new Error('Credenziali non valide');
+
+  const dati = await r.json();
+
+  // salvo token e utente separatamente per poterli leggere indipendentemente
+  localStorage.setItem('auth.token', dati.accessToken);
+  localStorage.setItem('auth.user', JSON.stringify(dati));
+
+  return dati;
+}
+
+/**
+ * Carica il profilo utente usando il token salvato
+ * Fa una GET autenticata a dummyjson.com/auth/me
+ * @returns {Object|null} il profilo utente o null se non loggato
+ */
+async function caricaProfilo() {
+  const token = getToken();
+  if (!token) return null; // non loggato, non faccio la richiesta
+
+  const r = await fetch('https://dummyjson.com/auth/me', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  if (!r.ok) return null;
+  return r.json();
+}
+
+// === Render auth === (aggiunto il 18/06/2026)
+
+/**
+ * Popola il div #auth-box in base allo stato di login:
+ * - se loggato: saluto + bottone Esci
+ * - se non loggato: form con username e password pre-compilati
+ */
+function renderAuthBox() {
+  const box = document.getElementById('auth-box');
+  box.replaceChildren();
+
+  const utente = getUtente();
+
+  if (utente) {
+    // utente loggato — mostro saluto e bottone logout
+    const saluto = document.createElement('span');
+    saluto.className = 'saluto';
+    saluto.textContent = `Ciao ${utente.firstName}`;
+
+    const btnLogout = document.createElement('button');
+    btnLogout.id = 'btn-logout';
+    btnLogout.className = 'btn-logout';
+    btnLogout.textContent = 'Esci';
+
+    // al click faccio logout, ri-rendo l'auth box e nascondo il profilo
+    btnLogout.addEventListener('click', () => {
+      logout();
+      renderAuthBox();
+      document.getElementById('profilo-section').setAttribute('hidden', '');
+    });
+
+    box.appendChild(saluto);
+    box.appendChild(btnLogout);
+
+  } else {
+    // utente non loggato — mostro form login con valori di test pre-compilati
+    const form = document.createElement('form');
+    form.id = 'form-login';
+
+    const inputUser = document.createElement('input');
+    inputUser.type = 'text';
+    inputUser.id = 'login-username';
+    inputUser.value = 'emilys'; // utente di test dummyjson
+    inputUser.placeholder = 'Username';
+
+    const inputPass = document.createElement('input');
+    inputPass.type = 'password';
+    inputPass.id = 'login-password';
+    inputPass.value = 'emilyspass'; // password di test dummyjson
+    inputPass.placeholder = 'Password';
+
+    const btnLogin = document.createElement('button');
+    btnLogin.type = 'submit';
+    btnLogin.textContent = 'Accedi';
+    btnLogin.className = 'btnPrimary';
+
+    form.appendChild(inputUser);
+    form.appendChild(inputPass);
+    form.appendChild(btnLogin);
+
+    // attacco il listener direttamente sul form appena creato
+    form.addEventListener('submit', gestisciLogin);
+
+    box.appendChild(form);
+  }
+}
+
+/**
+ * Gestisce il submit del form di login
+ * In caso di successo mostra il profilo, in caso di errore mostra un alert
+ */
+async function gestisciLogin(e) {
+  e.preventDefault();
+
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+
+  try {
+    await login(username, password);
+    renderAuthBox();          // aggiorno l'header con saluto + bottone esci
+    await mostraProfilo();    // carico e mostro il profilo
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+/**
+ * Carica il profilo e lo mostra nella sezione #profilo-section
+ * Se non loggato esce subito senza fare nulla
+ */
+async function mostraProfilo() {
+  if (!getToken()) return; // non loggato, esco subito
+
+  try {
+    const profilo = await caricaProfilo();
+    if (!profilo) return;
+
+    // popolo il div #profilo con foto e dati
+    document.getElementById('profilo').innerHTML =
+      `<img src="${profilo.image}" alt="foto profilo">
+       <div class="info">
+         <p><strong>${profilo.firstName} ${profilo.lastName}</strong></p>
+         <p>@${profilo.username} - ${profilo.email}</p>
+       </div>`;
+
+    // rendo visibile la sezione profilo
+    document.getElementById('profilo-section').removeAttribute('hidden');
+
+  } catch (err) {
+    console.error('Errore caricamento profilo:', err);
+  }
+}
+
+// === Avvio === (aggiunto il 18/06/2026)
+// funzione principale che inizializza tutto al caricamento della pagina
+
+async function avvio() {
+  renderFiltri();
+  renderRettili();
+  renderAuthBox();          // mostro login o saluto in base al token salvato
+  await mostraProfilo();    // se già loggato, mostro subito il profilo
+}
+
+avvio();
+
+//18/06
+/*Oggi abbiamo fatto due concetti: la conversione da .then ad async/await e l'autenticazione con una API esterna.
+async/await: ho riscritto la funzione cerca() che prima usava la catena .then().catch().finally(). 
+-------------------------------------------------------------------------------------------------------
+Con async/await la funzione diventa async, ogni operazione asincrona si precede con await e gli errori si gestiscono con try/catch/finally. Il comportamento è identico, ma il codice si legge dall'alto in basso come se fosse sincrono.
+-------------------------------------------------------------------------------------------------------
+Autenticazione: ho aggiunto 4 helper — getToken() e getUtente() leggono i dati salvati in localStorage, logout() li cancella, login() è una funzione async che fa una POST a dummyjson.com/auth/login con username e password nel body come JSON, riceve un token JWT e i dati utente e li salva in localStorage separatamente.
+-------------------------------------------------------------------------------------------------------
+Funzioni:
+caricaProfilo() è una funzione async che legge il token salvato e fa una GET autenticata a /auth/me passando il token nell'header Authorization: Bearer. Restituisce i dati del profilo.
+mostraProfilo() chiama caricaProfilo(), popola il div #profilo con foto, nome e email e rimuove l'attributo hidden dalla sezione.
+renderAuthBox() guarda se c'è un utente salvato: se sì mostra saluto + bottone Esci, se no mostra il form di login.
+avvio() è la funzione principale che viene chiamata al caricamento della pagina — chiama renderFiltri(), renderRettili(), renderAuthBox() e await mostraProfilo() così se sei già loggato vedi subito il profilo senza rifare il login.*/
